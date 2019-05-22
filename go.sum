@@ -1,3 +1,6 @@
 github.com/json-iterator/go v1.1.5/go.mod h1:+SdeFBvtyEkXs7REEP0seUULqWtbJapLOCVDaaPEHmU=
+github.com/json-iterator/go v1.1.6/go.mod h1:+SdeFBvtyEkXs7REEP0seUULqWtbJapLOCVDaaPEHmU=
 github.com/pubgo/assert v0.1.26 h1:aiKfp9lzs8ztvswTAdFkC53QeAF5IOSedfT1utSSUhc=
 github.com/pubgo/assert v0.1.26/go.mod h1:dfF8rocLW3zJn5lZhqUkRYUe/QyC4AnT/3ggrylAIHg=
+github.com/pubgo/assert v0.1.27 h1:xu1CgOeGbBBGDwbi1JTjK52i7efOy17GP6AdHVgcohQ=
+github.com/pubgo/assert v0.1.27/go.mod h1:64JRu47bgLPEHnIWKEMTPRs7bOVY6SUVCQO/LK1EqGE=
