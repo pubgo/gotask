@@ -12,9 +12,12 @@ func NewTask(max int, maxDur time.Duration) *Task {
 		max: max, maxDur:
 		maxDur, q: make(chan *_taskFn, max),
 		_curDur:   make(chan time.Duration, max),
-		_done:     make(chan bool, max),
 		_stopQ:    make(chan error),
 		lock:      &sync.Mutex{},
+		wg: &_WaitGroup{
+			_done: make(chan bool, max),
+			wg:&sync.WaitGroup{},
+		},
 	}
 	go _t._handle()
 	return _t
@@ -26,7 +29,6 @@ type Task struct {
 	curDur  time.Duration
 	_curDur chan time.Duration
 
-	_done chan bool
 	max   int
 
 	q chan *_taskFn
@@ -35,15 +37,11 @@ type Task struct {
 	_stop  error
 
 	lock *sync.Mutex
+	wg   *_WaitGroup
 }
 
 func (t *Task) Wait() {
-	for len(t._done) > 0 {
-		if t._stop != nil {
-			return
-		}
-		time.Sleep(time.Millisecond * 200)
-	}
+	t.wg.Wait()
 }
 
 func (t *Task) Do(f TaskFn, args ...interface{}) error {
@@ -55,13 +53,13 @@ func (t *Task) Do(f TaskFn, args ...interface{}) error {
 			return t._stop
 		}
 
-		if len(t._done) < t.max && t.curDur < t.maxDur {
+		if t.wg.Len() < t.max && t.curDur < t.maxDur {
 			t.q <- f(args...)
-			t._done <- true
+			t.wg.Add()
 			return nil
 		}
 
-		if len(t._done) < runtime.NumCPU()*2 {
+		if t.wg.Len() < runtime.NumCPU()*2 {
 			t.curDur = 0
 		}
 
@@ -87,7 +85,7 @@ func (t *Task) _handle() {
 						}
 					}
 				})
-				<-t._done
+				t.wg.Done()
 			}()
 		case _c := <-t._curDur:
 			t.curDur = t.curDur/2 + _c/2
