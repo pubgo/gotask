@@ -9,14 +9,14 @@ import (
 
 func NewTask(max int, maxDur time.Duration) *Task {
 	_t := &Task{
-		max: max, maxDur:
-		maxDur, q: make(chan *_taskFn, max),
-		_curDur:   make(chan time.Duration, max),
-		_stopQ:    make(chan error),
-		lock:      &sync.Mutex{},
+		max:     max,
+		maxDur:  maxDur,
+		q:       make(chan *_taskFn, max),
+		_curDur: make(chan time.Duration, max),
+		_stopQ:  make(chan error),
 		wg: &_WaitGroup{
 			_done: make(chan bool, max),
-			wg:&sync.WaitGroup{},
+			wg:    &sync.WaitGroup{},
 		},
 	}
 	go _t._handle()
@@ -29,15 +29,14 @@ type Task struct {
 	curDur  time.Duration
 	_curDur chan time.Duration
 
-	max   int
+	max int
 
 	q chan *_taskFn
 
 	_stopQ chan error
 	_stop  error
 
-	lock *sync.Mutex
-	wg   *_WaitGroup
+	wg *_WaitGroup
 }
 
 func (t *Task) Wait() {
@@ -45,9 +44,6 @@ func (t *Task) Wait() {
 }
 
 func (t *Task) Do(f TaskFn, args ...interface{}) error {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-
 	for {
 		if t._stop != nil {
 			return t._stop
@@ -77,12 +73,17 @@ func (t *Task) _handle() {
 		case _fn := <-t.q:
 			go func() {
 				t._curDur <- _FnCost(func() {
-					if err := _KTry(_fn.fn, _fn.args...); err != nil {
-						if len(_fn.efn) != 0 && _fn.efn[0] != nil {
-							if _err := _KTry(_fn.efn[0], err); _err != nil {
-								t._stopQ <- _err
-							}
-						}
+					err := _KTry(_fn.fn, _fn.args...)
+					if err == nil {
+						return
+					}
+
+					if len(_fn.efn) == 0 || _fn.efn[0] == nil {
+						return
+					}
+					
+					if _err := _KTry(_fn.efn[0], err); _err != nil {
+						t._stopQ <- _err
 					}
 				})
 				t.wg.Done()
