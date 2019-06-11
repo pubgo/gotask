@@ -70,8 +70,8 @@ func (t *Task) Do(f TaskFn, args ...interface{}) error {
 func (t *Task) _handle() {
 	for t._stop == nil {
 		select {
-		case _fn := <-t.q:
-			go func() {
+		case __fn := <-t.q:
+			go func(_fn *_taskFn) {
 				t._curDur <- _FnCost(func() {
 					err := _KTry(_fn.fn, _fn.args...)
 					if err == nil {
@@ -81,17 +81,17 @@ func (t *Task) _handle() {
 					if len(_fn.efn) == 0 || _fn.efn[0] == nil {
 						return
 					}
-					
+
 					if _err := _KTry(_fn.efn[0], err); _err != nil {
-						t._stopQ <- _err
+						t._stopQ <- _KTry(_fn.efn[0], err)
 					}
 				})
+
 				t.wg.Done()
-			}()
+			}(__fn)
 		case _c := <-t._curDur:
 			t.curDur = t.curDur/2 + _c/2
-		case _e := <-t._stopQ:
-			t._stop = _e
+		case t._stop = <-t._stopQ:
 		}
 	}
 }
