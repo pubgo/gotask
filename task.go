@@ -1,25 +1,33 @@
 package gotask
 
 import (
+	"github.com/pubgo/assert"
+	"github.com/pubgo/gotask/internal"
 	"log"
 	"runtime"
 	"sync"
 	"time"
 )
 
+func TaskOf(fn interface{}, efn ...func(err error)) internal.TaskFn {
+	assert.AssertFn(fn)
+	assert.T(len(efn) != 0 && efn[0] == nil, "efn is nil")
+
+	return func(args ...interface{}) *internal.TaskFnDef {
+		return internal.NewTaskFn(fn, args, efn)
+	}
+}
+
 func NewTask(max int, maxDur time.Duration) *Task {
 	_t := &Task{
 		max:     max,
 		maxDur:  maxDur,
-		q:       make(chan *_taskFn, max),
+		q:       make(chan *internal.TaskFnDef, max),
 		_curDur: make(chan time.Duration, max),
-		_stopQ:  make(chan error),
-		wg: &_WaitGroup{
-			_done: make(chan bool, max),
-			wg:    &sync.WaitGroup{},
-		},
+		_stopQ:  make(chan error, max),
+		wg:      internal.NewWaitGroup(&sync.WaitGroup{}, make(chan bool, max)),
 	}
-	go _t._handle()
+	go _t._loop()
 	return _t
 }
 
@@ -31,31 +39,39 @@ type Task struct {
 
 	max int
 
-	q chan *_taskFn
+	q chan *internal.TaskFnDef
 
 	_stopQ chan error
 	_stop  error
 
-	wg *_WaitGroup
+	wg *internal.WaitGroup
+}
+
+func (t *Task) Len() int {
+	return t.wg.Len()
 }
 
 func (t *Task) Wait() {
 	t.wg.Wait()
 }
 
-func (t *Task) Do(f TaskFn, args ...interface{}) error {
+func (t *Task) done() {
+	t.wg.Done()
+}
+
+func (t *Task) Do(f internal.TaskFn, args ...interface{}) error {
 	for {
 		if t._stop != nil {
 			return t._stop
 		}
 
-		if t.wg.Len() < t.max && t.curDur < t.maxDur {
-			t.q <- f(args...)
+		if t.Len() < t.max && t.curDur < t.maxDur {
 			t.wg.Add()
+			t.q <- f(args...)
 			return nil
 		}
 
-		if t.wg.Len() < runtime.NumCPU()*2 {
+		if t.Len() < runtime.NumCPU()*2 {
 			t.curDur = 0
 		}
 
@@ -67,30 +83,29 @@ func (t *Task) Do(f TaskFn, args ...interface{}) error {
 	}
 }
 
-func (t *Task) _handle() {
-	for t._stop == nil {
+func (t *Task) _loop() {
+	for {
 		select {
-		case __fn := <-t.q:
-			go func(_fn *_taskFn) {
-				t._curDur <- _FnCost(func() {
-					err := _KTry(_fn.fn, _fn.args...)
+		case _fn := <-t.q:
+			go func() {
+				t._curDur <- assert.FnCost(func() {
+					err := assert.KTry(_fn.Fn, _fn.Args...)
 					if err == nil {
 						return
 					}
 
-					if len(_fn.efn) == 0 || _fn.efn[0] == nil {
+					if len(_fn.Efn) == 0 || _fn.Efn[0] == nil {
+						if Debug {
+							go assert.P(err)
+						}
 						return
 					}
 
-					if _err := _KTry(_fn.efn[0], err); _err != nil {
-						t._stopQ <- _KTry(_fn.efn[0], err)
-					}
+					t._stopQ <- assert.KTry(_fn.Efn[0], err)
 				})
-
-				t.wg.Done()
-			}(__fn)
-		case _c := <-t._curDur:
-			t.curDur = t.curDur/2 + _c/2
+				t.done()
+			}()
+		case t.curDur = <-t._curDur:
 		case t._stop = <-t._stopQ:
 		}
 	}

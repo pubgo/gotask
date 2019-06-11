@@ -10,12 +10,10 @@ import (
 
 func TestTasks(t *testing.T) {
 	gotask.Debug = false
-
 	_fn := gotask.TaskOf(func(i int) {
 		//fmt.Println(i)
 		assert.T(i == 90999, "90999 error")
 	}, func(err error) {
-		fmt.Println(err)
 		assert.Throw(err)
 	})
 
@@ -24,11 +22,10 @@ func TestTasks(t *testing.T) {
 	fmt.Println("time cost: ", assert.FnCost(func() {
 		for i := 0; i < 100000; i++ {
 			if err := task.Do(_fn, i); err != nil {
-				fmt.Println(err)
+				assert.P(err)
 				break
 			}
 		}
 	}))
-
 	task.Wait()
 }
