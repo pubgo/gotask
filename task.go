@@ -14,7 +14,11 @@ func TaskOf(fn interface{}, efn ...func(err error)) internal.TaskFn {
 	assert.T(len(efn) != 0 && efn[0] == nil, "efn is nil")
 
 	return func(args ...interface{}) *internal.TaskFnDef {
-		return internal.NewTaskFn(fn, args, efn)
+		var log = errorLog
+		if len(efn) != 0 {
+			log = efn[0]
+		}
+		return internal.NewTaskFn(fn, args, log)
 	}
 }
 
@@ -93,17 +97,10 @@ func (t *Task) _loop() {
 					if err == nil {
 						return
 					}
-
-					if len(_fn.Efn) == 0 || _fn.Efn[0] == nil {
-						if Debug {
-							go assert.P(err)
-						}
-						return
-					}
-
-					t._stopQ <- assert.KTry(_fn.Efn[0], err)
+					t._stopQ <- assert.KTry(_fn.Efn, err)
 				})
 				t.done()
+
 			}()
 		case t.curDur = <-t._curDur:
 		case t._stop = <-t._stopQ:
