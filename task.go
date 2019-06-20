@@ -83,7 +83,7 @@ func (t *Task) Do(f internal.TaskFn, args ...interface{}) error {
 			log.Printf("q_l:%d cur_dur:%s max_q:%d max_dur:%s", len(t.q), t.curDur.String(), t.max, t.maxDur.String())
 		}
 
-		time.Sleep(time.Millisecond * 200)
+		time.Sleep(time.Millisecond)
 	}
 }
 
@@ -94,7 +94,9 @@ func (t *Task) _loop() {
 			go func() {
 				t._curDur <- assert.FnCost(func() {
 					assert.ErrHandle(assert.KTry(_fn.Fn, _fn.Args...), func(err *assert.KErr) {
-						t._stopQ <- assert.KTry(_fn.Efn, err)
+						assert.ErrHandle(assert.KTry(_fn.Efn, err), func(err *assert.KErr) {
+							t._stopQ <- err
+						})
 					})
 				})
 

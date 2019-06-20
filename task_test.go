@@ -14,7 +14,8 @@ func TestTasks(t *testing.T) {
 		//fmt.Println(i)
 		assert.T(i == 90999, "90999 error")
 	}, func(err error) {
-		assert.Throw(err)
+		_e:=assert.Wrap(err,"warp")
+		assert.Throw(_e)
 	})
 
 	var task = gotask.NewTask(500, time.Second+time.Millisecond*10)
@@ -22,9 +23,12 @@ func TestTasks(t *testing.T) {
 	fmt.Println("time cost: ", assert.FnCost(func() {
 		for i := 0; i < 100000; i++ {
 			if err := task.Do(_fn1, i); err != nil {
-				assert.P(err)
+				assert.ErrHandle(err, func(err *assert.KErr) {
+					err.P()
+				})
 				break
 			}
+			//fmt.Println(task.Len(),"len")
 		}
 	}))
 	task.Wait()
@@ -41,7 +45,9 @@ func TestErrLog(t *testing.T) {
 	fmt.Println("time cost: ", assert.FnCost(func() {
 		for i := 0; i < 100000; i++ {
 			if err := task.Do(_fn, i); err != nil {
-				assert.P(err)
+				assert.ErrHandle(err, func(err *assert.KErr) {
+					err.P()
+				})
 				break
 			}
 		}
@@ -52,14 +58,14 @@ func TestErrLog(t *testing.T) {
 func parserArticleWithReadability(i int) error {
 	errChan := make(chan bool)
 	go func() {
-		time.Sleep(time.Second*4)
+		time.Sleep(time.Second * 4)
 		errChan <- true
 	}()
 
 	for {
 		select {
 		case <-time.After(3 * time.Second):
-			return assert.Wrap(errors.New("readbility timeout"), "等待 %d",i)
+			return assert.Wrap(errors.New("readbility timeout"), "等待 %d", i)
 		case <-errChan:
 			return nil
 		}
@@ -69,7 +75,7 @@ func parserArticleWithReadability(i int) error {
 
 func TestW(t *testing.T) {
 	var _fn = gotask.TaskOf(func(i int) {
-		assert.ErrWrap(parserArticleWithReadability(i),"yyyy")
+		assert.ErrWrap(parserArticleWithReadability(i), "yyyy")
 		fmt.Println("ok", i)
 	}, func(err error) {
 		assert.ErrHandle(err, func(err *assert.KErr) {

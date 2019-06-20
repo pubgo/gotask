@@ -10,6 +10,8 @@ var Cfg = struct {
 
 func errorLog(err error) {
 	if Cfg.Debug {
-		assert.P(err)
+		assert.ErrHandle(err, func(err *assert.KErr) {
+			err.P()
+		})
 	}
 }
