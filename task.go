@@ -18,6 +18,7 @@ func TaskOf(fn interface{}, efn ...func(err error)) internal.TaskFn {
 		if len(efn) != 0 {
 			_log = efn[0]
 		}
+
 		return internal.NewTaskFn(fn, args, _log)
 	}
 }

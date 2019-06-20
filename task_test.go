@@ -10,31 +10,27 @@ import (
 )
 
 func TestTasks(t *testing.T) {
+	defer assert.Debug()
+
 	_fn1 := gotask.TaskOf(func(i int) {
 		//fmt.Println(i)
-		assert.T(i == 90999, "90999 error")
+		assert.T(i == 10999, "90999 error")
 	}, func(err error) {
-		_e:=assert.Wrap(err,"warp")
+		_e := assert.Wrap(err, "wrap")
 		assert.Throw(_e)
 	})
 
-	var task = gotask.NewTask(500, time.Second+time.Millisecond*10)
+	var task = gotask.NewTask(2000, time.Second+time.Millisecond*10)
 
-	fmt.Println("time cost: ", assert.FnCost(func() {
-		for i := 0; i < 100000; i++ {
-			if err := task.Do(_fn1, i); err != nil {
-				assert.ErrHandle(err, func(err *assert.KErr) {
-					err.P()
-				})
-				break
-			}
-			//fmt.Println(task.Len(),"len")
-		}
-	}))
+	for i := 0; i < 100000; i++ {
+		assert.Throw(task.Do(_fn1, i))
+	}
 	task.Wait()
 }
 
 func TestErrLog(t *testing.T) {
+	defer assert.Debug()
+
 	_fn := gotask.TaskOf(func(i int) {
 		//fmt.Println(i)
 		assert.T(i == 90999, "90999 error")
@@ -42,20 +38,18 @@ func TestErrLog(t *testing.T) {
 
 	var task = gotask.NewTask(500, time.Second+time.Millisecond*10)
 
-	fmt.Println("time cost: ", assert.FnCost(func() {
-		for i := 0; i < 100000; i++ {
-			if err := task.Do(_fn, i); err != nil {
-				assert.ErrHandle(err, func(err *assert.KErr) {
-					err.P()
-				})
-				break
-			}
-		}
-	}))
+	for i := 0; i < 100000; i++ {
+		assert.Throw(task.Do(_fn, i))
+	}
+
 	task.Wait()
 }
 
-func parserArticleWithReadability(i int) error {
+func parserArticleWithReadability(i int) {
+	defer assert.Panic(func(m *assert.M) {
+		m.Msg("parserArticleWithReadability")
+	})
+
 	errChan := make(chan bool)
 	go func() {
 		time.Sleep(time.Second * 4)
@@ -65,31 +59,30 @@ func parserArticleWithReadability(i int) error {
 	for {
 		select {
 		case <-time.After(3 * time.Second):
-			return assert.Wrap(errors.New("readbility timeout"), "等待 %d", i)
+			assert.ErrWrap(errors.New("readbility timeout"), "等待 %d", i)
 		case <-errChan:
-			return nil
+			return
 		}
 	}
 
 }
 
 func TestW(t *testing.T) {
+	defer assert.Debug()
+
 	var _fn = gotask.TaskOf(func(i int) {
-		assert.ErrWrap(parserArticleWithReadability(i), "yyyy")
+		parserArticleWithReadability(i)
 		fmt.Println("ok", i)
 	}, func(err error) {
 		assert.ErrHandle(err, func(err *assert.KErr) {
-			err.P()
+			fmt.Println("tag: ", err.Tag())
+			assert.ErrWrap(err, "testW")
 		})
 	})
 
 	var sss = gotask.NewTask(10000, time.Second*2)
 	for i := 0; i < 1000000; i++ {
-		if err := sss.Do(_fn, i); err != nil {
-			panic(err)
-		}
-		fmt.Println(i)
-		fmt.Println(sss.Len())
+		assert.Throw(sss.Do(_fn, i))
 	}
 	sss.Wait()
 }
