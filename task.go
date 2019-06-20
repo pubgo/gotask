@@ -93,12 +93,9 @@ func (t *Task) _loop() {
 		case _fn := <-t.q:
 			go func() {
 				t._curDur <- assert.FnCost(func() {
-					err := assert.KTry(_fn.Fn, _fn.Args...)
-					if err == nil {
-						return
-					}
-
-					t._stopQ <- assert.KTry(_fn.Efn, err)
+					assert.ErrHandle(assert.KTry(_fn.Fn, _fn.Args...), func(err *assert.KErr) {
+						t._stopQ <- assert.KTry(_fn.Efn, err)
+					})
 				})
 
 				t.done()
