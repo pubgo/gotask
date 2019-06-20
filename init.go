@@ -2,10 +2,14 @@ package gotask
 
 import "github.com/pubgo/assert"
 
-var Debug = true
+var Cfg = struct {
+	Debug bool
+}{
+	Debug: true,
+}
 
 func errorLog(err error) {
-	if Debug {
+	if Cfg.Debug {
 		assert.P(err)
 	}
 }
