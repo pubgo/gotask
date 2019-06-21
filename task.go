@@ -1,7 +1,7 @@
 package gotask
 
 import (
-	"github.com/pubgo/assert"
+	"github.com/pubgo/errors"
 	"github.com/pubgo/gotask/internal"
 	"log"
 	"runtime"
@@ -10,8 +10,10 @@ import (
 )
 
 func TaskOf(fn interface{}, efn ...func(err error)) internal.TaskFn {
-	assert.AssertFn(fn)
-	assert.T(len(efn) != 0 && assert.IsNil(efn[0]), "efn is nil")
+	defer errors.Handle()
+
+	assertFn(fn)
+	errors.T(len(efn) != 0 && errors.IsNil(efn[0]), "efn is nil")
 
 	return func(args ...interface{}) *internal.TaskFnDef {
 		var _log = errorLog
@@ -93,9 +95,9 @@ func (t *Task) _loop() {
 		select {
 		case _fn := <-t.q:
 			go func() {
-				t._curDur <- assert.FnCost(func() {
-					assert.ErrHandle(assert.KTry(_fn.Fn, _fn.Args...), func(err *assert.KErr) {
-						assert.ErrHandle(assert.KTry(_fn.Efn, err), func(err *assert.KErr) {
+				t._curDur <- errors.FnCost(func() {
+					errors.ErrHandle(errors.Try(errors.FnOf(_fn.Fn, _fn.Args...)), func(err *errors.Err) {
+						errors.ErrHandle(errors.Try(errors.FnOf(_fn.Efn, err)), func(err *errors.Err) {
 							t._stopQ <- err
 						})
 					})

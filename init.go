@@ -1,6 +1,9 @@
 package gotask
 
-import "github.com/pubgo/assert"
+import (
+	"github.com/pubgo/errors"
+	"reflect"
+)
 
 var Cfg = struct {
 	Debug bool
@@ -10,8 +13,15 @@ var Cfg = struct {
 
 func errorLog(err error) {
 	if Cfg.Debug {
-		assert.ErrHandle(err, func(err *assert.KErr) {
+		errors.ErrHandle(err, func(err *errors.Err) {
 			err.P()
 		})
 	}
+}
+
+func assertFn(fn interface{}) {
+	errors.T(errors.IsNil(fn), "the func is nil")
+
+	_v := reflect.TypeOf(fn)
+	errors.T(_v.Kind() != reflect.Func, "func type error(%s)", _v.String())
 }
