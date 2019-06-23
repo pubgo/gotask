@@ -2,6 +2,7 @@ package gotask
 
 import (
 	"github.com/pubgo/errors"
+	"reflect"
 )
 
 var Cfg = struct {
@@ -16,4 +17,11 @@ func errorLog(err error) {
 			err.P()
 		})
 	}
+}
+
+func assertFn(fn interface{}) {
+	errors.T(errors.IsZero(fn), "the func is nil")
+
+	_v := reflect.TypeOf(fn)
+	errors.T(_v.Kind() != reflect.Func, "func type error(%s)", _v.String())
 }

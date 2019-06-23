@@ -12,6 +12,7 @@ func TestTasks(t *testing.T) {
 	defer errors.Debug()
 
 	_fn1 := gotask.TaskOf(func(i int) {
+		//fmt.Println(i)
 		errors.T(i == 10999, "90999 error")
 	}, func(err error) {
 		errors.Wrap(err, "wrap")
@@ -28,6 +29,7 @@ func TestErrLog(t *testing.T) {
 	defer errors.Debug()
 
 	_fn := gotask.TaskOf(func(i int) {
+		//fmt.Println(i)
 		errors.T(i == 90999, "90999 error")
 	})
 
