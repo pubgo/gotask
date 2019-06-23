@@ -1,6 +1,8 @@
 package gotask
 
-import "github.com/pubgo/assert"
+import (
+	"github.com/pubgo/errors"
+)
 
 var Cfg = struct {
 	Debug bool
@@ -10,7 +12,7 @@ var Cfg = struct {
 
 func errorLog(err error) {
 	if Cfg.Debug {
-		assert.ErrHandle(err, func(err *assert.KErr) {
+		errors.ErrHandle(err, func(err *errors.Err) {
 			err.P()
 		})
 	}
