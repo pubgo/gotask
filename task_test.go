@@ -13,13 +13,13 @@ func TestTasks(t *testing.T) {
 
 	_fn1 := gotask.TaskOf(func(i int) {
 		//fmt.Println(i)
-		errors.T(i == 10999, "90999 error")
+		errors.T(i == 29, "90999 error")
 	}, func(err error) {
 		errors.Wrap(err, "wrap")
 	})
 
-	var task = gotask.NewTask(2000, time.Second+time.Millisecond*10)
-	for i := 0; i < 100000; i++ {
+	var task = gotask.NewTask(10, time.Second+time.Millisecond*10)
+	for i := 0; i < 100; i++ {
 		errors.Panic(task.Do(_fn1, i))
 	}
 	task.Wait()

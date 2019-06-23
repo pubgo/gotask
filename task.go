@@ -70,6 +70,8 @@ func (t *Task) done() {
 }
 
 func (t *Task) Do(f internal.TaskFn, args ...interface{}) error {
+	defer errors.Handle(func() {})
+
 	for {
 		if t._stop != nil {
 			return t._stop
@@ -94,6 +96,8 @@ func (t *Task) Do(f internal.TaskFn, args ...interface{}) error {
 }
 
 func (t *Task) _loop() {
+	defer errors.Handle(func() {})
+
 	for {
 		select {
 		case _fn := <-t.q:
@@ -108,7 +112,8 @@ func (t *Task) _loop() {
 
 				t.done()
 			}()
-		case t.curDur = <-t._curDur:
+		case _curDur := <-t._curDur:
+			t.curDur += t.curDur/2 + _curDur/2
 		case t._stop = <-t._stopQ:
 		}
 	}
