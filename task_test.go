@@ -106,10 +106,6 @@ var _fn = gotask.TaskOf(func(c *http.Client, i int) {
 	//errors.Panic(err)
 	//fmt.Println(string(dt))
 
-}, func(err error) {
-	errors.ErrHandle(err, func(err *errors.Err) {
-		err.P()
-	})
 })
 
 func TestUrl(t *testing.T) {
@@ -122,10 +118,13 @@ func TestUrl(t *testing.T) {
 	}}
 	client.Timeout = 5 * time.Second
 
-	var sss = gotask.NewTask(50, time.Second*2)
-	for i := 0; i < 10000; i++ {
+	var task = gotask.NewTask(50, time.Second*2)
+	for i := 0; i < 300; i++ {
 		fmt.Println(i)
-		errors.Panic(sss.Do(_fn, client, i))
+		task.Do(_fn, client, i)
 	}
-	sss.Wait()
+	task.Wait()
+	errors.P(task.Stat())
+	fmt.Println(task.Err())
+
 }
