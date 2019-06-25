@@ -2,3 +2,5 @@ github.com/pkg/profile v1.3.0/go.mod h1:hJw3o1OdXxsrSjjVksARp5W95eeEaEfptyVZyv6J
 github.com/pubgo/assert v0.1.29/go.mod h1:64JRu47bgLPEHnIWKEMTPRs7bOVY6SUVCQO/LK1EqGE=
 github.com/pubgo/errors v0.1.6 h1:2idlTikjt0dfsSGYiVqv14riYaHN5GcGL4vcmunImY4=
 github.com/pubgo/errors v0.1.6/go.mod h1:jOKVMWMze+re+joFBvwMdqJJ0ZbUcz1VObMyp3gv+D8=
+github.com/pubgo/errors v0.1.7 h1:pNwqZbe6YVJdIlffZGMNk9Q+/Mw7UpPJWA62B3t6woc=
+github.com/pubgo/errors v0.1.7/go.mod h1:jOKVMWMze+re+joFBvwMdqJJ0ZbUcz1VObMyp3gv+D8=

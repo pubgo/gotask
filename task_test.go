@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/pubgo/errors"
 	"github.com/pubgo/gotask"
+	"net/http"
 	"testing"
 	"time"
 )
@@ -77,6 +78,46 @@ func TestW(t *testing.T) {
 	var sss = gotask.NewTask(10000, time.Second*2)
 	for i := 0; i < 1000000; i++ {
 		errors.Panic(sss.Do(_fn, i))
+	}
+	sss.Wait()
+}
+
+var _fn = gotask.TaskOf(func(c *http.Client, i int) {
+	errors.Retry(3, func() {
+		fmt.Println("try: ", i)
+		req, err := http.NewRequest(http.MethodGet, "http://baidu.com", nil)
+		errors.Panic(err)
+		req.Close = true
+
+		resp, err := c.Do(req)
+		errors.Panic(err)
+		errors.T(resp.StatusCode != http.StatusOK, "状态不正确%d", resp.StatusCode)
+	})
+
+	//dt, err := ioutil.ReadAll(resp.Body)
+	//errors.Panic(err)
+	//fmt.Println(string(dt))
+
+}, func(err error) {
+	errors.ErrHandle(err, func(err *errors.Err) {
+		err.P()
+	})
+})
+
+func TestUrl(t *testing.T) {
+	gotask.Cfg.Debug = false
+
+	client := &http.Client{Transport: &http.Transport{
+		MaxIdleConns:       10,
+		IdleConnTimeout:    3 * time.Second,
+		DisableCompression: true,
+	}}
+	client.Timeout = 5 * time.Second
+
+	var sss = gotask.NewTask(50, time.Second*2)
+	for i := 0; i < 10000; i++ {
+		fmt.Println(i)
+		errors.Panic(sss.Do(_fn, client, i))
 	}
 	sss.Wait()
 }
