@@ -12,17 +12,21 @@ func TestTasks(t *testing.T) {
 	defer errors.Debug()
 
 	_fn1 := gotask.TaskOf(func(i int) {
-		//fmt.Println(i)
-		errors.T(i == 29, "90999 error")
-	}, func(err error) {
-		errors.Wrap(err, "wrap")
+		errors.ErrHandle(errors.Try(func() {})(func() {
+			//fmt.Println(i)
+			errors.T(i == 29, "90999 error")
+		}), func(err *errors.Err) {
+			errors.Wrap(err, "wrap")
+		})
 	})
 
 	var task = gotask.NewTask(10, time.Second+time.Millisecond*10)
 	for i := 0; i < 100; i++ {
-		errors.Panic(task.Do(_fn1, i))
+		task.Do(_fn1, i)
 	}
 	task.Wait()
+	errors.P(task.Stat())
+	fmt.Println(task.Err())
 }
 
 func TestErrLog(t *testing.T) {
@@ -35,10 +39,12 @@ func TestErrLog(t *testing.T) {
 
 	var task = gotask.NewTask(500, time.Second+time.Millisecond*10)
 	for i := 0; i < 100000; i++ {
-		errors.Panic(task.Do(_fn, i))
+		task.Do(_fn, i)
 	}
 
 	task.Wait()
+	errors.P(task.Stat())
+	fmt.Println(task.Err())
 }
 
 func parserArticleWithReadability(i int) {
@@ -65,18 +71,20 @@ func TestW(t *testing.T) {
 	defer errors.Debug()
 
 	var _fn = gotask.TaskOf(func(i int) {
-		parserArticleWithReadability(i)
-		fmt.Println("ok", i)
-	}, func(err error) {
-		errors.ErrHandle(err, func(err *errors.Err) {
+		errors.ErrHandle(errors.Try(func() {})(func() {
+			parserArticleWithReadability(i)
+			fmt.Println("ok", i)
+		}), func(err *errors.Err) {
 			fmt.Println("tag: ", err.Tag())
 			errors.Wrap(err, "testW")
 		})
 	})
 
-	var sss = gotask.NewTask(10000, time.Second*2)
+	var task = gotask.NewTask(10000, time.Second*2)
 	for i := 0; i < 1000000; i++ {
-		errors.Panic(sss.Do(_fn, i))
+		task.Do(_fn, i)
 	}
-	sss.Wait()
+	task.Wait()
+	errors.P(task.Stat())
+	fmt.Println(task.Err())
 }

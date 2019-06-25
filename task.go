@@ -3,28 +3,23 @@ package gotask
 import (
 	"github.com/pubgo/errors"
 	"github.com/pubgo/gotask/internal"
-	"log"
+	"github.com/rs/zerolog/log"
 	"reflect"
 	"runtime"
 	"sync"
 	"time"
 )
 
-func TaskOf(fn interface{}, efn ...func(err error)) internal.TaskFn {
+func TaskOf(fn interface{}) internal.TaskFn {
 	defer errors.Handle(func() {})
 
-	errors.T(errors.IsZero(fn) || reflect.TypeOf(fn).Kind() != reflect.Func, "fn error")
-	errors.T(len(efn) != 0 && errors.IsZero(efn[0]), "efn is nil")
+	errors.T(errors.IsZero(fn) ||
+		reflect.TypeOf(fn).Kind() != reflect.Func ||
+		reflect.TypeOf(fn).NumOut() != 0, "fn error")
 
 	return func(args ...interface{}) *internal.TaskFnDef {
 		defer errors.Handle(func() {})
-
-		var _log = errorLog
-		if len(efn) != 0 {
-			_log = efn[0]
-		}
-
-		return internal.NewTaskFn(fn, args, _log)
+		return internal.NewTaskFn(fn, args)
 	}
 }
 
@@ -51,8 +46,10 @@ type Task struct {
 
 	q chan *internal.TaskFnDef
 
-	_stopQ chan error
-	_stop  error
+	_stopQ    chan error
+	_stop     error
+	errCount  int
+	taskCount int
 
 	wg *internal.WaitGroup
 }
@@ -69,27 +66,42 @@ func (t *Task) done() {
 	t.wg.Done()
 }
 
-func (t *Task) Do(f internal.TaskFn, args ...interface{}) error {
+func (t *Task) Stat() internal.Stat {
+	return internal.Stat{
+		QL:        len(t.q),
+		CurDur:    t.curDur.Seconds(),
+		MaxQ:      t.max,
+		MaxDur:    t.maxDur.Seconds(),
+		ErrCount:  t.errCount,
+		TaskCount: t.taskCount,
+	}
+}
+
+func (t *Task) Err() error {
+	return t._stop
+}
+
+func (t *Task) Do(f internal.TaskFn, args ...interface{}) {
 	defer errors.Handle(func() {})
 
 	for {
-		if t._stop != nil {
-			return t._stop
-		}
 
 		if t.Len() < t.max && t.curDur < t.maxDur {
 			t.wg.Add()
 			t.q <- f(args...)
-			return nil
+			return
 		}
 
 		if t.Len() < runtime.NumCPU()*2 {
 			t.curDur = 0
 		}
 
-		if Cfg.Debug {
-			log.Printf("q_l:%d cur_dur:%s max_q:%d max_dur:%s", len(t.q), t.curDur.String(), t.max, t.maxDur.String())
-		}
+		log.Info().
+			Int("q_l", len(t.q)).
+			Str("cur_dur", t.curDur.String()).
+			Int("max_q", t.max).
+			Str("max_dur", t.maxDur.String()).
+			Msg("task info")
 
 		time.Sleep(time.Millisecond)
 	}
@@ -101,20 +113,20 @@ func (t *Task) _loop() {
 	for {
 		select {
 		case _fn := <-t.q:
+			t.taskCount++
+
 			go func() {
 				t._curDur <- errors.FnCost(func() {
 					errors.ErrHandle(errors.Try(_fn.Fn, _fn.Args...), func(err *errors.Err) {
-						errors.ErrHandle(errors.Try(_fn.Efn, err), func(err *errors.Err) {
-							t._stopQ <- err
-						})
+						t._stopQ <- err
 					})
+					t.done()
 				})
-
-				t.done()
 			}()
 		case _curDur := <-t._curDur:
-			t.curDur += t.curDur/2 + _curDur/2
+			t.curDur = (t.curDur + _curDur) / 2
 		case t._stop = <-t._stopQ:
+			t.errCount++
 		}
 	}
 }
