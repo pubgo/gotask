@@ -17,7 +17,7 @@ func TaskOf(fn interface{}) internal.TaskFn {
 		reflect.TypeOf(fn).Kind() != reflect.Func ||
 		reflect.TypeOf(fn).NumOut() != 0, "fn error")
 
-	return func(args ...interface{}) *internal.TaskFnDef {
+	return func(args ...interface{}) internal.TaskFnDef {
 		defer errors.Handle(func() {})
 		return internal.NewTaskFn(fn, args)
 	}
@@ -27,7 +27,7 @@ func NewTask(max int, maxDur time.Duration) *Task {
 	_t := &Task{
 		max:     max,
 		maxDur:  maxDur,
-		q:       make(chan *internal.TaskFnDef, max),
+		q:       make(chan internal.TaskFnDef, max),
 		_curDur: make(chan time.Duration, max),
 		_stopQ:  make(chan error, max),
 		wg:      internal.NewWaitGroup(&sync.WaitGroup{}, make(chan bool, max)),
@@ -44,7 +44,7 @@ type Task struct {
 
 	max int
 
-	q chan *internal.TaskFnDef
+	q chan internal.TaskFnDef
 
 	_stopQ    chan error
 	_stop     error

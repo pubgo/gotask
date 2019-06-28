@@ -5,14 +5,14 @@ type TaskFnDef struct {
 	Args []interface{}
 }
 
-func NewTaskFn(fn interface{}, args []interface{}) *TaskFnDef {
-	return &TaskFnDef{
+func NewTaskFn(fn interface{}, args []interface{}) TaskFnDef {
+	return TaskFnDef{
 		Fn:   fn,
 		Args: args,
 	}
 }
 
-type TaskFn func(args ...interface{}) *TaskFnDef
+type TaskFn func(args ...interface{}) TaskFnDef
 
 type Stat struct {
 	QL        int     `json:"q_l,omitempty"`
