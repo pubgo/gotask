@@ -18,7 +18,6 @@ func TaskOf(fn interface{}) internal.TaskFn {
 		reflect.TypeOf(fn).NumOut() != 0, "fn error")
 
 	return func(args ...interface{}) internal.TaskFnDef {
-		defer errors.Handle(func() {})
 		return internal.NewTaskFn(fn, args)
 	}
 }

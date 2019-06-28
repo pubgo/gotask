@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/pubgo/errors"
 	"github.com/pubgo/gotask"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -88,6 +89,10 @@ func TestW(t *testing.T) {
 	task.Wait()
 	errors.P(task.Stat())
 	fmt.Println(task.Err())
+}
+
+func isEOF(err error) bool {
+	return err == io.EOF || err == io.ErrUnexpectedEOF
 }
 
 var _fn = gotask.TaskOf(func(c *http.Client, i int) {
