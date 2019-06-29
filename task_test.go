@@ -77,7 +77,6 @@ func TestW(t *testing.T) {
 			parserArticleWithReadability(i)
 			fmt.Println("ok", i)
 		}), func(err *errors.Err) {
-			fmt.Println("tag: ", err.Tag())
 			errors.Wrap(err, "testW")
 		})
 	})
