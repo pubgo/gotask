@@ -4,7 +4,6 @@ import "reflect"
 
 type TaskFnDef struct {
 	Fn           reflect.Value
-	Args         []reflect.Value
 	VariadicType reflect.Value
 	IsVariadic   bool
 }

@@ -14,7 +14,7 @@ func NewTask(max int, maxDur time.Duration) *Task {
 	_t := &Task{
 		max:     max,
 		maxDur:  maxDur,
-		q:       make(chan internal.TaskFnDef, max),
+		q:       make(chan *_TaskFn, max),
 		_curDur: make(chan time.Duration, max),
 		_stopQ:  make(chan error, max),
 		wg:      internal.NewWaitGroup(&sync.WaitGroup{}, make(chan bool, max)),
@@ -31,7 +31,7 @@ type Task struct {
 
 	max int
 
-	q chan internal.TaskFnDef
+	q chan *_TaskFn
 
 	_stopQ    chan error
 	_stop     error
@@ -68,6 +68,11 @@ func (t *Task) Err() error {
 	return t._stop
 }
 
+type _TaskFn struct {
+	Fn   reflect.Value
+	Args []reflect.Value
+}
+
 func (t *Task) Do(fName string, args ...interface{}) {
 	defer errors.Handle()()
 
@@ -79,20 +84,24 @@ func (t *Task) Do(fName string, args ...interface{}) {
 		_v := reflect.ValueOf(k)
 		if k != nil && !errors.IsZero(_v) {
 			_args[i] = _v
+			continue
 		}
 
 		if f.IsVariadic {
-			args[i] = f.VariadicType
-		} else {
-			args[i] = reflect.New(f.Fn.Type().In(i)).Elem()
+			_args[i] = f.VariadicType
+			continue
 		}
+
+		_args[i] = reflect.New(f.Fn.Type().In(i)).Elem()
 	}
-	f.Args = _args
 
 	for {
 		if t.Len() < t.max && t.curDur < t.maxDur {
 			t.wg.Add()
-			t.q <- f
+			t.q <- &_TaskFn{
+				Fn:   f.Fn,
+				Args: _args,
+			}
 			return
 		}
 
@@ -100,14 +109,14 @@ func (t *Task) Do(fName string, args ...interface{}) {
 			t.curDur = 0
 		}
 
-		log.Info().
-			Int("q_l", len(t.q)).
-			Str("cur_dur", t.curDur.String()).
-			Int("max_q", t.max).
-			Str("max_dur", t.maxDur.String()).
-			Msg("task info")
-
-		time.Sleep(time.Millisecond)
+		if _l := log.Info(); _l.Enabled() {
+			_l.Int("q_l", len(t.q)).
+				Str("cur_dur", t.curDur.String()).
+				Int("max_q", t.max).
+				Str("max_dur", t.maxDur.String()).
+				Msg("task info")
+		}
+		time.Sleep(time.Microsecond)
 	}
 }
 
@@ -120,15 +129,13 @@ func (t *Task) _loop() {
 			t.taskCount++
 
 			go func() {
-				t._curDur <- errors.FnCost(func() {
-					errors.ErrHandle(errors.Try(func() {
-						_fn.Fn.Call(_fn.Args)
-					}), func(err *errors.Err) {
-						err.P()
-						t._stopQ <- err
-					})
-					t.done()
+				_t := time.Now()
+				errors.ErrHandle(errors.Try(_fn.Fn.Call)(_fn.Args), func(err *errors.Err) {
+					t._stopQ <- err
 				})
+				t._curDur <- time.Now().Sub(_t)
+				t.done()
+				_fn = nil
 			}()
 		case _curDur := <-t._curDur:
 			t.curDur = (t.curDur + _curDur) / 2
