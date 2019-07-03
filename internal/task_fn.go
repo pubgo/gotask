@@ -1,18 +1,13 @@
 package internal
 
+import "reflect"
+
 type TaskFnDef struct {
-	Fn   interface{}
-	Args []interface{}
+	Fn           reflect.Value
+	Args         []reflect.Value
+	VariadicType reflect.Value
+	IsVariadic   bool
 }
-
-func NewTaskFn(fn interface{}, args []interface{}) TaskFnDef {
-	return TaskFnDef{
-		Fn:   fn,
-		Args: args,
-	}
-}
-
-type TaskFn func(args ...interface{}) TaskFnDef
 
 type Stat struct {
 	QL        int     `json:"q_l,omitempty"`

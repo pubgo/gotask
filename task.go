@@ -10,18 +10,6 @@ import (
 	"time"
 )
 
-func TaskOf(fn interface{}) internal.TaskFn {
-	defer errors.Handle(func() {})
-
-	errors.T(errors.IsZero(fn) ||
-		reflect.TypeOf(fn).Kind() != reflect.Func ||
-		reflect.TypeOf(fn).NumOut() != 0, "fn error")
-
-	return func(args ...interface{}) internal.TaskFnDef {
-		return internal.NewTaskFn(fn, args)
-	}
-}
-
 func NewTask(max int, maxDur time.Duration) *Task {
 	_t := &Task{
 		max:     max,
@@ -80,14 +68,29 @@ func (t *Task) Err() error {
 	return t._stop
 }
 
-func (t *Task) Do(f internal.TaskFn, args ...interface{}) {
-	defer errors.Handle(func() {})
+func (t *Task) Do(fName string, args ...interface{}) {
+	defer errors.Handle()()
+
+	f, ok := _tasks[fName]
+	errors.T(!ok, "the task %s is not existed", fName)
+
+	var _args = make([]reflect.Value, len(args))
+	for i, k := range args {
+		_v := reflect.ValueOf(k)
+		if k != nil && !errors.IsZero(_v) {
+			_args[i] = _v
+		}
+
+		if f.IsVariadic {
+			args[i] = f.VariadicType
+		}
+	}
+	f.Args = _args
 
 	for {
-
 		if t.Len() < t.max && t.curDur < t.maxDur {
 			t.wg.Add()
-			t.q <- f(args...)
+			t.q <- f
 			return
 		}
 
@@ -107,7 +110,7 @@ func (t *Task) Do(f internal.TaskFn, args ...interface{}) {
 }
 
 func (t *Task) _loop() {
-	defer errors.Handle(func() {})
+	defer errors.Handle()()
 
 	for {
 		select {
@@ -116,7 +119,10 @@ func (t *Task) _loop() {
 
 			go func() {
 				t._curDur <- errors.FnCost(func() {
-					errors.ErrHandle(errors.Try(_fn.Fn, _fn.Args...), func(err *errors.Err) {
+					errors.ErrHandle(errors.Try(func() {
+						_fn.Fn.Call(_fn.Args)
+					}), func(err *errors.Err) {
+						err.P()
 						t._stopQ <- err
 					})
 					t.done()
