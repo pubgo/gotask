@@ -27,7 +27,6 @@ func TestTasks(t *testing.T) {
 	}
 	task.Wait()
 	errors.P(task.Stat())
-	//fmt.Println(task.Err())
 }
 
 func TestErrLog(t *testing.T) {
@@ -44,7 +43,6 @@ func TestErrLog(t *testing.T) {
 
 	task.Wait()
 	errors.P(task.Stat())
-	fmt.Println(task.Err())
 }
 
 func parserArticleWithReadability(i int) {
@@ -85,7 +83,6 @@ func TestW(t *testing.T) {
 	}
 	task.Wait()
 	errors.P(task.Stat())
-	fmt.Println(task.Err())
 }
 
 func isEOF(err error) bool {
@@ -93,8 +90,6 @@ func isEOF(err error) bool {
 }
 
 func TestUrl(t *testing.T) {
-	gotask.Cfg.Debug = false
-
 	client := &http.Client{Transport: &http.Transport{
 		MaxIdleConns:       10,
 		IdleConnTimeout:    3 * time.Second,
@@ -103,7 +98,7 @@ func TestUrl(t *testing.T) {
 	client.Timeout = 5 * time.Second
 
 	gotask.TaskRegistry("fn", func(c *http.Client, i int) {
-		errors.Retry(3, func() {
+		errors.ErrLog(errors.Retry(3, func() {
 			fmt.Println("try: ", i)
 			req, err := http.NewRequest(http.MethodGet, "http://baidu.com", nil)
 			errors.Panic(err)
@@ -112,12 +107,7 @@ func TestUrl(t *testing.T) {
 			resp, err := c.Do(req)
 			errors.Panic(err)
 			errors.T(resp.StatusCode != http.StatusOK, "状态不正确%d", resp.StatusCode)
-		})
-
-		//dt, err := ioutil.ReadAll(resp.Body)
-		//errors.Panic(err)
-		//fmt.Println(string(dt))
-
+		}))
 	})
 
 	var task = gotask.NewTask(50, time.Second*2)
@@ -127,6 +117,5 @@ func TestUrl(t *testing.T) {
 	}
 	task.Wait()
 	errors.P(task.Stat())
-	fmt.Println(task.Err())
 
 }

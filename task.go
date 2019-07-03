@@ -34,7 +34,6 @@ type Task struct {
 	q chan *_TaskFn
 
 	_stopQ    chan error
-	_stop     error
 	errCount  int
 	taskCount int
 
@@ -62,10 +61,6 @@ func (t *Task) Stat() internal.Stat {
 		ErrCount:  t.errCount,
 		TaskCount: t.taskCount,
 	}
-}
-
-func (t *Task) Err() error {
-	return t._stop
 }
 
 type _TaskFn struct {
@@ -139,7 +134,12 @@ func (t *Task) _loop() {
 			}()
 		case _curDur := <-t._curDur:
 			t.curDur = (t.curDur + _curDur) / 2
-		case t._stop = <-t._stopQ:
+		case _err := <-t._stopQ:
+			if _l := log.Debug(); _l.Enabled() {
+				_l.Err(_err).
+					Str("method", "task").
+					Msg("")
+			}
 			t.errCount++
 		}
 	}
