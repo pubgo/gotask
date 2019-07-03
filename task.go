@@ -83,6 +83,8 @@ func (t *Task) Do(fName string, args ...interface{}) {
 
 		if f.IsVariadic {
 			args[i] = f.VariadicType
+		} else {
+			args[i] = reflect.New(f.Fn.Type().In(i)).Elem()
 		}
 	}
 	f.Args = _args
