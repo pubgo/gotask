@@ -1,3 +1,3 @@
 package gotask
 
-const Version = "v0.0.8"
+const Version = "v0.0.10"

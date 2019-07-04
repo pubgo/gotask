@@ -24,12 +24,11 @@ func NewTask(max int, maxDur time.Duration) *Task {
 }
 
 type Task struct {
+	max    int
 	maxDur time.Duration
 
 	curDur  time.Duration
 	_curDur chan time.Duration
-
-	max int
 
 	q chan *_TaskFn
 
@@ -63,9 +62,27 @@ func (t *Task) Stat() internal.Stat {
 	}
 }
 
+var _TaskFnPool = &sync.Pool{
+	New: func() interface{} {
+		return &_TaskFn{
+			Fn: reflect.Value{},
+		}
+	},
+}
+
+func getTaskFn() *_TaskFn {
+	return _TaskFnPool.Get().(*_TaskFn)
+}
+
 type _TaskFn struct {
 	Fn   reflect.Value
 	Args []reflect.Value
+}
+
+func (t *_TaskFn) reset() {
+	t.Args = t.Args[0:]
+	t.Fn = reflect.Value{}
+	_TaskFnPool.Put(t)
 }
 
 func (t *Task) Do(fName string, args ...interface{}) {
@@ -90,13 +107,14 @@ func (t *Task) Do(fName string, args ...interface{}) {
 		_args[i] = reflect.New(f.Fn.Type().In(i)).Elem()
 	}
 
+	tsk := getTaskFn()
+	tsk.Fn = f.Fn
+	tsk.Args = _args
+
 	for {
 		if t.Len() < t.max && t.curDur < t.maxDur {
 			t.wg.Add()
-			t.q <- &_TaskFn{
-				Fn:   f.Fn,
-				Args: _args,
-			}
+			t.q <- tsk
 			return
 		}
 
@@ -125,18 +143,24 @@ func (t *Task) _loop() {
 
 			go func() {
 				_t := time.Now()
-				errors.ErrHandle(errors.Try(_fn.Fn.Call)(_fn.Args), func(err *errors.Err) {
+				errors.ErrHandle(errors.Try(func() {
+					_fn.Fn.Call(_fn.Args)
+				}), func(err *errors.Err) {
 					t._stopQ <- err
 				})
-				t._curDur <- time.Now().Sub(_t)
 				t.done()
-				_fn = nil
+				_fn.reset()
+				t._curDur <- time.Now().Sub(_t)
 			}()
 		case _curDur := <-t._curDur:
 			t.curDur = (t.curDur + _curDur) / 2
 		case _err := <-t._stopQ:
-			if _l := log.Debug(); _l.Enabled() {
+			if _l := log.Warn(); _l.Enabled() {
 				_l.Err(_err).
+					Int("q_l", len(t.q)).
+					Str("cur_dur", t.curDur.String()).
+					Int("max_q", t.max).
+					Str("max_dur", t.maxDur.String()).
 					Str("method", "task").
 					Msg("")
 			}

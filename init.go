@@ -12,8 +12,14 @@ var Cfg = struct {
 	Debug: true,
 }
 
-func _TaskOf(fn interface{}) *internal.TaskFnDef {
+var _tasks = make(map[string]*internal.TaskFnDef)
+
+func TaskRegistry(name string, fn interface{}) {
 	defer errors.Handle()()
+
+	if _, ok := _tasks[name]; ok {
+		errors.T(ok, "%s has existed", name)
+	}
 
 	_fn := reflect.ValueOf(fn)
 	errors.T(errors.IsZero(_fn) ||
@@ -26,22 +32,11 @@ func _TaskOf(fn interface{}) *internal.TaskFnDef {
 		variadicType = reflect.New(_fn.Type().In(_fn.Type().NumIn() - 1).Elem()).Elem()
 	}
 
-	return &internal.TaskFnDef{
+	_tasks[name] = &internal.TaskFnDef{
 		Fn:           _fn,
 		VariadicType: variadicType,
 		IsVariadic:   isVariadic,
 	}
-}
-
-var _tasks = make(map[string]*internal.TaskFnDef)
-
-func TaskRegistry(name string, fn interface{}) {
-	defer errors.Handle()()
-
-	if _, ok := _tasks[name]; ok {
-		errors.T(ok, "%s has existed", name)
-	}
-	_tasks[name] = _TaskOf(fn)
 }
 
 func GetTasks() map[string]*internal.TaskFnDef {

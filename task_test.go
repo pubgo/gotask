@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/pubgo/errors"
 	"github.com/pubgo/gotask"
+	"github.com/rs/zerolog"
 	"io"
 	"net/http"
 	"testing"
@@ -12,6 +13,8 @@ import (
 
 func TestTasks(t *testing.T) {
 	defer errors.Debug()
+
+	zerolog.SetGlobalLevel(zerolog.WarnLevel)
 
 	gotask.TaskRegistry("fn", func(i int) {
 		errors.ErrHandle(errors.Try(func() {
