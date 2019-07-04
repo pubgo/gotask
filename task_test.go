@@ -93,6 +93,8 @@ func isEOF(err error) bool {
 }
 
 func TestUrl(t *testing.T) {
+	zerolog.SetGlobalLevel(zerolog.WarnLevel)
+
 	client := &http.Client{Transport: &http.Transport{
 		MaxIdleConns:       10,
 		IdleConnTimeout:    3 * time.Second,
@@ -101,11 +103,10 @@ func TestUrl(t *testing.T) {
 	client.Timeout = 5 * time.Second
 
 	gotask.TaskRegistry("fn", func(c *http.Client, i int) {
-		errors.ErrLog(errors.Retry(3, func() {
+		errors.Panic(errors.Retry(3, func() {
 			fmt.Println("try: ", i)
-			req, err := http.NewRequest(http.MethodGet, "http://baidu.com", nil)
+			req, err := http.NewRequest(http.MethodGet, "https://www.yuanben.io", nil)
 			errors.Panic(err)
-			req.Close = true
 
 			resp, err := c.Do(req)
 			errors.Panic(err)
@@ -113,12 +114,11 @@ func TestUrl(t *testing.T) {
 		}))
 	})
 
-	var task = gotask.NewTask(50, time.Second*2)
-	for i := 0; i < 300; i++ {
-		fmt.Println(i)
+	var task = gotask.NewTask(200, time.Second*2)
+	for i := 0; i < 3000; i++ {
 		task.Do("fn", client, i)
 	}
 	task.Wait()
-	errors.P(task.Stat())
+	fmt.Println(task.Stat())
 
 }

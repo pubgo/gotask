@@ -155,16 +155,18 @@ func (t *Task) _loop() {
 		case _curDur := <-t._curDur:
 			t.curDur = (t.curDur + _curDur) / 2
 		case _err := <-t._stopQ:
+			t.errCount++
 			if _l := log.Warn(); _l.Enabled() {
 				_l.Err(_err).
 					Int("q_l", len(t.q)).
+					Int("err_count", t.errCount).
+					Int("task_count", t.taskCount).
 					Str("cur_dur", t.curDur.String()).
 					Int("max_q", t.max).
 					Str("max_dur", t.maxDur.String()).
 					Str("method", "task").
 					Msg("")
 			}
-			t.errCount++
 		}
 	}
 }
