@@ -80,7 +80,7 @@ type _TaskFn struct {
 }
 
 func (t *_TaskFn) reset() {
-	t.Args = t.Args[0:]
+	t.Args = t.Args[:0]
 	t.Fn = reflect.Value{}
 	_TaskFnPool.Put(t)
 }
@@ -133,7 +133,6 @@ func (t *Task) Do(fName string, args ...interface{}) {
 }
 
 func (t *Task) _loop() {
-
 	for {
 		select {
 		case _fn := <-t.q:
@@ -152,6 +151,7 @@ func (t *Task) _loop() {
 			}()
 		case _curDur := <-t._curDur:
 			t.curDur = (t.curDur + _curDur) / 2
+
 		case _err := <-t._stopQ:
 			t.errCount++
 			if _l := log.Warn(); _l.Enabled() {
