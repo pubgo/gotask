@@ -15,8 +15,6 @@ var Cfg = struct {
 var _tasks = make(map[string]*internal.TaskFnDef)
 
 func TaskRegistry(name string, fn interface{}) {
-	defer errors.Handle()()
-
 	if _, ok := _tasks[name]; ok {
 		errors.T(ok, "%s has existed", name)
 	}

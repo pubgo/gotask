@@ -12,7 +12,7 @@ import (
 )
 
 func TestTasks(t *testing.T) {
-	defer errors.Debug()
+	defer errors.Assert()
 
 	zerolog.SetGlobalLevel(zerolog.WarnLevel)
 
@@ -49,8 +49,6 @@ func TestErrLog(t *testing.T) {
 }
 
 func parserArticleWithReadability(i int) {
-	defer errors.Handle()()
-
 	errChan := make(chan bool)
 	go func() {
 		time.Sleep(time.Second * 4)

@@ -86,8 +86,6 @@ func (t *_TaskFn) reset() {
 }
 
 func (t *Task) Do(fName string, args ...interface{}) {
-	defer errors.Handle()()
-
 	f, ok := _tasks[fName]
 	errors.T(!ok, "the task %s is not existed", fName)
 
@@ -134,8 +132,6 @@ func (t *Task) Do(fName string, args ...interface{}) {
 }
 
 func (t *Task) _loop() {
-	defer errors.Handle()()
-
 	for {
 		select {
 		case _fn := <-t.q:
