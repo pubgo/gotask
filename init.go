@@ -6,15 +6,10 @@ import (
 	"reflect"
 )
 
-var Cfg = struct {
-	Debug bool
-}{
-	Debug: true,
-}
-
 var _tasks = make(map[string]*internal.TaskFnDef)
 
 func TaskRegistry(name string, fn interface{}) {
+	defer errors.Assert()
 	if _, ok := _tasks[name]; ok {
 		errors.T(ok, "%s has existed", name)
 	}
@@ -45,5 +40,10 @@ func GetTask(name string) (tsk *internal.TaskFnDef) {
 	if _dt, ok := _tasks[name]; ok {
 		return _dt
 	}
+	return
+}
+
+func MatchTask(name string) (ok bool) {
+	_, ok = _tasks[name]
 	return
 }

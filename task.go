@@ -80,7 +80,7 @@ type _TaskFn struct {
 }
 
 func (t *_TaskFn) reset() {
-	t.Args = t.Args[0:]
+	t.Args = t.Args[:0]
 	t.Fn = reflect.Value{}
 	_TaskFnPool.Put(t)
 }
@@ -150,6 +150,7 @@ func (t *Task) _loop() {
 			}()
 		case _curDur := <-t._curDur:
 			t.curDur = (t.curDur + _curDur) / 2
+
 		case _err := <-t._stopQ:
 			t.errCount++
 			if _l := log.Warn(); _l.Enabled() {

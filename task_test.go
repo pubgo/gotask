@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+func TestErr(t *testing.T) {
+	defer errors.Assert()
+
+	errors.T(true, "test debug")
+}
 func TestTasks(t *testing.T) {
 	defer errors.Assert()
 
@@ -33,7 +38,7 @@ func TestTasks(t *testing.T) {
 }
 
 func TestErrLog(t *testing.T) {
-	defer errors.Debug()
+	defer errors.Assert()
 
 	gotask.TaskRegistry("fn", func(i int) {
 		errors.T(i == 90999, "90999 error")
@@ -67,7 +72,7 @@ func parserArticleWithReadability(i int) {
 }
 
 func TestW(t *testing.T) {
-	defer errors.Debug()
+	defer errors.Assert()
 
 	gotask.TaskRegistry("fn", func(i int) {
 		errors.ErrHandle(errors.Try(func() {})(func() {
@@ -91,6 +96,8 @@ func isEOF(err error) bool {
 }
 
 func TestUrl(t *testing.T) {
+	defer errors.Assert()
+
 	zerolog.SetGlobalLevel(zerolog.WarnLevel)
 
 	client := &http.Client{Transport: &http.Transport{
@@ -118,5 +125,4 @@ func TestUrl(t *testing.T) {
 	}
 	task.Wait()
 	fmt.Println(task.Stat())
-
 }
