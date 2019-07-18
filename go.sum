@@ -2,6 +2,8 @@ github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e/go.mod h1:F5haX7
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pubgo/errors v0.3.1 h1:ici7cEPKKgBjhjhB+Pctf/lhKu0a29Zx9lDh7wxDJ1E=
 github.com/pubgo/errors v0.3.1/go.mod h1:ndINQoGJ6/FZZqIE7PaBaCnFQHcTPe+2JDQaGc4e6Lk=
+github.com/pubgo/errors v0.3.2 h1:kjmGuU6YwNY+CM9DMjOcLE6nwdUHZTAcgxbLDRVa9xc=
+github.com/pubgo/errors v0.3.2/go.mod h1:ndINQoGJ6/FZZqIE7PaBaCnFQHcTPe+2JDQaGc4e6Lk=
 github.com/rs/xid v1.2.1/go.mod h1:+uKXf+4Djp6Md1KODXJxgGQPKngRmWyn10oCKFzNHOQ=
 github.com/rs/zerolog v1.14.3 h1:4EGfSkR2hJDB0s3oFfrlPqjU1e4WLncergLil3nEKW0=
 github.com/rs/zerolog v1.14.3/go.mod h1:3WXPzbXEEliJ+a6UFE4vhIxV8qR1EML6ngzP9ug4eYg=

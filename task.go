@@ -2,9 +2,7 @@ package gotask
 
 import (
 	"github.com/pubgo/errors"
-	"github.com/pubgo/gotask/internal"
 	"github.com/rs/zerolog/log"
-	"reflect"
 	"runtime"
 	"sync"
 	"time"
@@ -14,10 +12,10 @@ func NewTask(max int, maxDur time.Duration) *Task {
 	_t := &Task{
 		max:     max,
 		maxDur:  maxDur,
-		q:       make(chan *_TaskFn, max),
+		taskL:   make(chan bool, max),
+		taskQ:   make(chan func(...interface{}) (err error), max),
 		_curDur: make(chan time.Duration, max),
-		_stopQ:  make(chan error, max),
-		wg:      internal.NewWaitGroup(&sync.WaitGroup{}, make(chan bool, max)),
+		mux:     &sync.Mutex{},
 	}
 	go _t._loop()
 	return _t
@@ -30,98 +28,57 @@ type Task struct {
 	curDur  time.Duration
 	_curDur chan time.Duration
 
-	q chan *_TaskFn
+	taskL chan bool
+	taskQ chan func(...interface{}) (err error)
 
-	_stopQ    chan error
-	errCount  int
-	taskCount int
-
-	wg *internal.WaitGroup
+	mux *sync.Mutex
 }
 
-func (t *Task) Len() int {
-	return t.wg.Len()
+func (t *Task) Size() int {
+	return len(t.taskL)
+}
+
+// ATLen current active task size
+func (t *Task) CurSize() int {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+
+	return len(t.taskL) - len(t.taskQ)
 }
 
 func (t *Task) Wait() {
-	t.wg.Wait()
-}
-
-func (t *Task) done() {
-	t.wg.Done()
-}
-
-func (t *Task) Stat() internal.Stat {
-	return internal.Stat{
-		QL:        len(t.q),
-		CurDur:    t.curDur.Seconds(),
-		MaxQ:      t.max,
-		MaxDur:    t.maxDur.Seconds(),
-		ErrCount:  t.errCount,
-		TaskCount: t.taskCount,
+	for len(t.taskL) > 0 {
+		time.Sleep(time.Second)
 	}
 }
 
-var _TaskFnPool = &sync.Pool{
-	New: func() interface{} {
-		return &_TaskFn{
-			Fn: reflect.Value{},
-		}
-	},
-}
-
-func getTaskFn() *_TaskFn {
-	return _TaskFnPool.Get().(*_TaskFn)
-}
-
-type _TaskFn struct {
-	Fn   reflect.Value
-	Args []reflect.Value
-}
-
-func (t *_TaskFn) reset() {
-	t.Args = t.Args[:0]
-	t.Fn = reflect.Value{}
-	_TaskFnPool.Put(t)
-}
-
-func (t *Task) Do(fName string, args ...interface{}) {
-	f, ok := _tasks[fName]
-	errors.T(!ok, "the task %s is not existed", fName)
-
-	var _args = make([]reflect.Value, len(args))
-	for i, k := range args {
-		_v := reflect.ValueOf(k)
-		if k != nil && !errors.IsZero(_v) {
-			_args[i] = _v
-			continue
-		}
-
-		if f.IsVariadic {
-			_args[i] = f.VariadicType
-			continue
-		}
-
-		_args[i] = reflect.New(f.Fn.Type().In(i)).Elem()
+func (t *Task) Stat() Stat {
+	return Stat{
+		QL:     t.Size(),
+		CurDur: t.curDur.Seconds(),
+		MaxQ:   t.max,
+		MaxDur: t.maxDur.Seconds(),
 	}
+}
 
-	tsk := getTaskFn()
-	tsk.Fn = f.Fn
-	tsk.Args = _args
+func (t *Task) Do(name string, args ...interface{}) {
+	t.mux.Lock()
+	defer t.mux.Unlock()
 
+	errors.T(!TaskMatch(name), "the task %s is not existed", name)
 	for {
-		if t.Len() < t.max && t.curDur < t.maxDur {
-			t.wg.Add()
-			t.q <- tsk
+		if len(t.taskL) < t.max && t.curDur < t.maxDur {
+			t.taskQ <- TaskGet(name)(args...)
+			t.taskL <- true
 			return
 		}
 
-		if t.Len() < runtime.NumCPU()*2 {
+		if len(t.taskL) < runtime.NumCPU()*2 {
 			t.curDur = 0
 		}
 
 		if _l := log.Info(); _l.Enabled() {
-			_l.Int("q_l", len(t.q)).
+			_l.Int("q_l", len(t.taskQ)).
 				Str("cur_dur", t.curDur.String()).
 				Int("max_q", t.max).
 				Str("max_dur", t.maxDur.String()).
@@ -131,39 +88,30 @@ func (t *Task) Do(fName string, args ...interface{}) {
 	}
 }
 
+func (t *Task) _taskHandle(fn func(...interface{}) (err error)) {
+	_t := time.Now()
+	errors.ErrHandle(fn(), func(err *errors.Err) {
+		if _l := log.Warn(); _l.Enabled() {
+			_l.Err(err).
+				Int("taskQ_len", len(t.taskQ)).
+				Int("max_taskQ_len", t.max).
+				Str("cur_dur", t.curDur.String()).
+				Str("max_dur", t.maxDur.String()).
+				Str("method", "task").
+				Msg("")
+		}
+	})
+	<-t.taskL
+	t._curDur <- time.Now().Sub(_t)
+}
+
 func (t *Task) _loop() {
 	for {
 		select {
-		case _fn := <-t.q:
-			t.taskCount++
-
-			go func() {
-				_t := time.Now()
-				errors.ErrHandle(errors.Try(func() {
-					_fn.Fn.Call(_fn.Args)
-				}), func(err *errors.Err) {
-					t._stopQ <- err
-				})
-				t.done()
-				_fn.reset()
-				t._curDur <- time.Now().Sub(_t)
-			}()
+		case _fn := <-t.taskQ:
+			go t._taskHandle(_fn)
 		case _curDur := <-t._curDur:
 			t.curDur = (t.curDur + _curDur) / 2
-
-		case _err := <-t._stopQ:
-			t.errCount++
-			if _l := log.Warn(); _l.Enabled() {
-				_l.Err(_err).
-					Int("q_l", len(t.q)).
-					Int("err_count", t.errCount).
-					Int("task_count", t.taskCount).
-					Str("cur_dur", t.curDur.String()).
-					Int("max_q", t.max).
-					Str("max_dur", t.maxDur.String()).
-					Str("method", "task").
-					Msg("")
-			}
 		}
 	}
 }

@@ -11,17 +11,12 @@ import (
 	"time"
 )
 
-func TestErr(t *testing.T) {
-	defer errors.Assert()
-
-	errors.T(true, "test debug")
-}
 func TestTasks(t *testing.T) {
 	defer errors.Assert()
 
-	zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	//zerolog.SetGlobalLevel(zerolog.WarnLevel)
 
-	gotask.TaskRegistry("fn", func(i int) {
+	gotask.TaskRegister("fn", func(i int) {
 		errors.ErrHandle(errors.Try(func() {
 			errors.T(i == 29, "90999 error")
 		}), func(err *errors.Err) {
@@ -40,15 +35,17 @@ func TestTasks(t *testing.T) {
 func TestErrLog(t *testing.T) {
 	defer errors.Assert()
 
-	gotask.TaskRegistry("fn", func(i int) {
+	//zerolog.SetGlobalLevel(zerolog.WarnLevel)
+
+	gotask.TaskRegister("fn", func(i int) {
+		//fmt.Println(i)
 		errors.T(i == 90999, "90999 error")
 	})
 
 	var task = gotask.NewTask(500, time.Second+time.Millisecond*10)
 	for i := 0; i < 100000; i++ {
-		task.Do("fn", i)
+		go task.Do("fn", i)
 	}
-
 	task.Wait()
 	errors.P(task.Stat())
 }
@@ -74,7 +71,7 @@ func parserArticleWithReadability(i int) {
 func TestW(t *testing.T) {
 	defer errors.Assert()
 
-	gotask.TaskRegistry("fn", func(i int) {
+	gotask.TaskRegister("fn", func(i int) {
 		errors.ErrHandle(errors.Try(func() {})(func() {
 			parserArticleWithReadability(i)
 			fmt.Println("ok", i)
@@ -107,7 +104,7 @@ func TestUrl(t *testing.T) {
 	}}
 	client.Timeout = 5 * time.Second
 
-	gotask.TaskRegistry("fn", func(c *http.Client, i int) {
+	gotask.TaskRegister("fn", func(c *http.Client, i int) {
 		errors.Panic(errors.Retry(3, func() {
 			fmt.Println("try: ", i)
 			req, err := http.NewRequest(http.MethodGet, "https://www.yuanben.io", nil)
@@ -125,4 +122,27 @@ func TestUrl(t *testing.T) {
 	}
 	task.Wait()
 	fmt.Println(task.Stat())
+}
+
+func TestTaskRegistry(t *testing.T) {
+	errors.TestRun(gotask.TaskRegister, func(desc func(string) *errors.Test) {
+		desc("int params").In("fn", func(i int) {
+			errors.ErrHandle(errors.Try(func() {
+				errors.T(i == 29, "90999 error")
+			}), func(err *errors.Err) {
+				errors.Wrap(err, "wrap")
+			})
+		}).IsNil()
+	})
+
+	errors.TestRun(gotask.NewTask, func(desc func(string) *errors.Test) {
+		desc("ok").In(10, time.Second+time.Millisecond*10).IsNil(func(task *gotask.Task) {
+			for i := 0; i < 100; i++ {
+				task.Do("fn", i)
+			}
+			task.Wait()
+			errors.P(task.Stat())
+		})
+	})
+
 }

@@ -2,48 +2,37 @@ package gotask
 
 import (
 	"github.com/pubgo/errors"
-	"github.com/pubgo/gotask/internal"
 	"reflect"
 )
 
-var _tasks = make(map[string]*internal.TaskFnDef)
+var _tasks = make(map[string]func(...interface{}) func(...interface{}) (err error))
 
-func TaskRegistry(name string, fn interface{}) {
+func TaskRegister(name string, fn interface{}) {
 	defer errors.Assert()
+
 	if _, ok := _tasks[name]; ok {
-		errors.T(ok, "%s has existed", name)
+		errors.T(ok, "%s existed", name)
 	}
 
 	_fn := reflect.ValueOf(fn)
-	errors.T(errors.IsZero(_fn) ||
-		_fn.Kind() != reflect.Func ||
-		_fn.Type().NumOut() != 0, "fn error")
+	errors.T(errors.IsZero(_fn) || _fn.Kind() != reflect.Func, "the func is nil(%#v) or type error(%s)", fn, _fn.Kind().String())
+	_tasks[name] = errors.Try(fn)
+}
 
-	var variadicType reflect.Value
-	var isVariadic = _fn.Type().IsVariadic()
-	if isVariadic {
-		variadicType = reflect.New(_fn.Type().In(_fn.Type().NumIn() - 1).Elem()).Elem()
-	}
-
-	_tasks[name] = &internal.TaskFnDef{
-		Fn:           _fn,
-		VariadicType: variadicType,
-		IsVariadic:   isVariadic,
+func TaskEach(fn func(name string, fn func(...interface{}) func(...interface{}) (err error))) {
+	for k, v := range _tasks {
+		fn(k, v)
 	}
 }
 
-func GetTasks() map[string]*internal.TaskFnDef {
-	return _tasks
-}
-
-func GetTask(name string) (tsk *internal.TaskFnDef) {
+func TaskGet(name string) func(...interface{}) func(...interface{}) (err error) {
 	if _dt, ok := _tasks[name]; ok {
 		return _dt
 	}
-	return
+	return nil
 }
 
-func MatchTask(name string) (ok bool) {
-	_, ok = _tasks[name]
-	return
+func TaskMatch(name string) bool {
+	_, ok := _tasks[name]
+	return ok
 }
