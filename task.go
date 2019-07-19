@@ -2,14 +2,13 @@ package gotask
 
 import (
 	"github.com/pubgo/errors"
-	"github.com/rs/zerolog/log"
 	"runtime"
 	"sync"
 	"time"
 )
 
-func NewTask(max int, maxDur time.Duration) *Task {
-	_t := &Task{
+func _NewTask(max int, maxDur time.Duration) *_Task {
+	_t := &_Task{
 		max:     max,
 		maxDur:  maxDur,
 		taskL:   make(chan bool, max),
@@ -21,7 +20,7 @@ func NewTask(max int, maxDur time.Duration) *Task {
 	return _t
 }
 
-type Task struct {
+type _Task struct {
 	max    int
 	maxDur time.Duration
 
@@ -34,25 +33,25 @@ type Task struct {
 	mux *sync.Mutex
 }
 
-func (t *Task) Size() int {
+func (t *_Task) Size() int {
 	return len(t.taskL)
 }
 
 // ATLen current active task size
-func (t *Task) CurSize() int {
+func (t *_Task) CurSize() int {
 	t.mux.Lock()
 	defer t.mux.Unlock()
 
 	return len(t.taskL) - len(t.taskQ)
 }
 
-func (t *Task) Wait() {
+func (t *_Task) Wait() {
 	for len(t.taskL) > 0 {
 		time.Sleep(time.Second)
 	}
 }
 
-func (t *Task) Stat() Stat {
+func (t *_Task) Stat() Stat {
 	return Stat{
 		QL:     t.Size(),
 		CurDur: t.curDur.Seconds(),
@@ -61,7 +60,7 @@ func (t *Task) Stat() Stat {
 	}
 }
 
-func (t *Task) Do(name string, args ...interface{}) {
+func (t *_Task) Do(name string, args ...interface{}) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
 
@@ -77,7 +76,7 @@ func (t *Task) Do(name string, args ...interface{}) {
 			t.curDur = 0
 		}
 
-		if _l := log.Info(); _l.Enabled() {
+		if _l := logger.Info(); _l.Enabled() {
 			_l.Int("q_l", len(t.taskQ)).
 				Str("cur_dur", t.curDur.String()).
 				Int("max_q", t.max).
@@ -88,10 +87,10 @@ func (t *Task) Do(name string, args ...interface{}) {
 	}
 }
 
-func (t *Task) _taskHandle(fn func(...interface{}) (err error)) {
+func (t *_Task) _taskHandle(fn func(...interface{}) (err error)) {
 	_t := time.Now()
 	errors.ErrHandle(fn(), func(err *errors.Err) {
-		if _l := log.Warn(); _l.Enabled() {
+		if _l := logger.Warn(); _l.Enabled() {
 			_l.Err(err).
 				Int("taskQ_len", len(t.taskQ)).
 				Int("max_taskQ_len", t.max).
@@ -105,7 +104,7 @@ func (t *Task) _taskHandle(fn func(...interface{}) (err error)) {
 	t._curDur <- time.Now().Sub(_t)
 }
 
-func (t *Task) _loop() {
+func (t *_Task) _loop() {
 	for {
 		select {
 		case _fn := <-t.taskQ:

@@ -11,6 +11,10 @@ import (
 	"time"
 )
 
+func init() {
+	gotask.InitDebugLog()
+}
+
 func TestTasks(t *testing.T) {
 	defer errors.Assert()
 

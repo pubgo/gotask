@@ -7,7 +7,7 @@ import (
 
 var _tasks = make(map[string]func(...interface{}) func(...interface{}) (err error))
 
-func TaskRegister(name string, fn interface{}) {
+func _TaskRegister(name string, fn interface{}) {
 	defer errors.Assert()
 
 	if _, ok := _tasks[name]; ok {
@@ -19,20 +19,20 @@ func TaskRegister(name string, fn interface{}) {
 	_tasks[name] = errors.Try(fn)
 }
 
-func TaskEach(fn func(name string, fn func(...interface{}) func(...interface{}) (err error))) {
+func _TaskEach(fn func(name string, fn func(...interface{}) func(...interface{}) (err error))) {
 	for k, v := range _tasks {
 		fn(k, v)
 	}
 }
 
-func TaskGet(name string) func(...interface{}) func(...interface{}) (err error) {
+func _TaskGet(name string) func(...interface{}) func(...interface{}) (err error) {
 	if _dt, ok := _tasks[name]; ok {
 		return _dt
 	}
 	return nil
 }
 
-func TaskMatch(name string) bool {
+func _TaskMatch(name string) bool {
 	_, ok := _tasks[name]
 	return ok
 }
