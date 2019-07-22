@@ -14,4 +14,5 @@ func init() {
 
 func InitDebugLog() {
 	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Caller().Timestamp().Logger()
+	logger = log.Logger
 }
