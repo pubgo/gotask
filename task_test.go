@@ -19,15 +19,28 @@ func TestTasks(t *testing.T) {
 	defer errors.Assert()
 
 	//zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	//fn := errors.Try(func(i int) {
+	//	defer errors.Resp(func(err *errors.Err) {
+	//
+	//	})
+	//
+	//	errors.T(i == 29, "90999 error")
+	//})
 
 	gotask.TaskRegister("fn", func(i int) {
+		//defer errors.Resp(func(err *errors.Err) {
+		//})
+
 		errors.T(i == 29, "90999 error")
 	})
 
 	var task = gotask.NewTask(10, time.Second+time.Millisecond*10)
+	defer task.Stop()
+
 	for i := 0; i < 100; i++ {
 		task.Do("fn", i)
 	}
+
 	task.Wait()
 	errors.P(task.Stat())
 }

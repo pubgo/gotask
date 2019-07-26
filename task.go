@@ -2,7 +2,9 @@ package gotask
 
 import (
 	"github.com/pubgo/errors"
+	"os"
 	"runtime"
+	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -21,6 +23,7 @@ func _NewTask(max int, maxDur time.Duration) *_Task {
 }
 
 type _Task struct {
+	_stop  bool
 	max    int
 	maxDur time.Duration
 
@@ -98,14 +101,23 @@ func (t *_Task) _taskHandle(fn func(...interface{}) (err error)) {
 				Str("max_dur", t.maxDur.String()).
 				Str("method", "task").
 				Msg("")
+			debug.PrintStack()
 		}
+		os.Exit(1)
 	})
 	<-t.taskL
 	t._curDur <- time.Now().Sub(_t)
 }
 
+func (t *_Task) Stop() {
+	t._stop = true
+	close(t._curDur)
+	close(t.taskL)
+	close(t.taskQ)
+}
+
 func (t *_Task) _loop() {
-	for {
+	for !t._stop {
 		select {
 		case _fn := <-t.taskQ:
 			go t._taskHandle(_fn)
