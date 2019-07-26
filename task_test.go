@@ -21,11 +21,7 @@ func TestTasks(t *testing.T) {
 	//zerolog.SetGlobalLevel(zerolog.WarnLevel)
 
 	gotask.TaskRegister("fn", func(i int) {
-		errors.ErrHandle(errors.Try(func() {
-			errors.T(i == 29, "90999 error")
-		}), func(err *errors.Err) {
-			errors.Wrap(err, "wrap")
-		})
+		errors.T(i == 29, "90999 error")
 	})
 
 	var task = gotask.NewTask(10, time.Second+time.Millisecond*10)
