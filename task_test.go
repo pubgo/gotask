@@ -21,7 +21,7 @@ func TestTasks(t *testing.T) {
 	//zerolog.SetGlobalLevel(zerolog.WarnLevel)
 	fn := errors.Try(func(i int) {
 		defer errors.Resp(func(err *errors.Err) {
-
+			fmt.Println(err.P())
 		})
 
 		errors.T(i == 29, "90999 error")
@@ -41,10 +41,11 @@ func TestTasks(t *testing.T) {
 func TestErrLog(t *testing.T) {
 	defer errors.Assert()
 
-	//zerolog.SetGlobalLevel(zerolog.WarnLevel)
-
 	fn := errors.Try(func(i int) {
-		//fmt.Println(i)
+		defer errors.Resp(func(err *errors.Err) {
+			fmt.Println(err.P())
+		})
+
 		errors.T(i == 90999, "90999 error")
 	})
 
