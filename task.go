@@ -17,6 +17,7 @@ func _NewTask(max int, maxDur time.Duration) *_Task {
 		taskQ:   make(chan func(...interface{}) (err error), max),
 		_curDur: make(chan time.Duration, max),
 		mux:     &sync.Mutex{},
+		_stopS:  make(chan struct{}),
 	}
 	go _t._loop()
 	return _t
@@ -24,6 +25,7 @@ func _NewTask(max int, maxDur time.Duration) *_Task {
 
 type _Task struct {
 	_stop  bool
+	_stopS chan struct{}
 	max    int
 	maxDur time.Duration
 
@@ -111,18 +113,22 @@ func (t *_Task) _taskHandle(fn func(...interface{}) (err error)) {
 
 func (t *_Task) Stop() {
 	t._stop = true
+	t._stopS <- struct{}{}
+	t.Wait()
 	close(t._curDur)
 	close(t.taskL)
 	close(t.taskQ)
 }
 
 func (t *_Task) _loop() {
-	for !t._stop {
+	for {
 		select {
 		case _fn := <-t.taskQ:
 			go t._taskHandle(_fn)
 		case _curDur := <-t._curDur:
 			t.curDur = (t.curDur + _curDur) / 2
+		case <-t._stopS:
+			return
 		}
 	}
 }
