@@ -1,5 +1,7 @@
 package gotask
 
+
+
 type _Stat struct {
 	QL     int     `json:"q_l,omitempty"`
 	CurDur float64 `json:"cur_dur,omitempty"`

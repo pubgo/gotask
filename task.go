@@ -63,14 +63,13 @@ func (t *_Task) Stat() Stat {
 	}
 }
 
-func (t *_Task) Do(name string, args ...interface{}) {
+func (t *_Task) Do(name TaskFn, args ...interface{}) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
 
-	errors.T(!TaskMatch(name), "the task %s is not existed", name)
 	for {
 		if len(t.taskL) < t.max && t.curDur < t.maxDur {
-			t.taskQ <- TaskGet(name)(args...)
+			t.taskQ <- name(args...)
 			t.taskL <- true
 			return
 		}
@@ -90,6 +89,7 @@ func (t *_Task) Do(name string, args ...interface{}) {
 	}
 }
 
+// 此处不允许出错, 所有的错误必须在worker中自行处理
 func (t *_Task) _taskHandle(fn func(...interface{}) (err error)) {
 	_t := time.Now()
 	errors.ErrHandle(fn(), func(err *errors.Err) {

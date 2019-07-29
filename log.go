@@ -12,7 +12,7 @@ func init() {
 	logger = log.With().Str("pkg", "gotask").Logger()
 }
 
-func InitDebugLog() {
+func _InitDebugLog() {
 	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Caller().Timestamp().Logger()
 	logger = log.Logger
 }
