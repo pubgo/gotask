@@ -1,4 +1,4 @@
-package gotask_test
+package tests_test
 
 import (
 	"fmt"
