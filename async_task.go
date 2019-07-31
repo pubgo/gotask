@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-func _NewTask(max int, maxDur time.Duration) *_Task {
-	_t := &_Task{
+func _NewAsyncTask(max int, maxDur time.Duration) *_AsyncTask {
+	_t := &_AsyncTask{
 		max:     max,
 		maxDur:  maxDur,
 		taskL:   make(chan bool, max),
@@ -23,7 +23,9 @@ func _NewTask(max int, maxDur time.Duration) *_Task {
 	return _t
 }
 
-type _Task struct {
+type _AsyncTask struct {
+	_TaskDef
+
 	_stop  bool
 	_stopS chan struct{}
 	max    int
@@ -38,25 +40,25 @@ type _Task struct {
 	mux *sync.Mutex
 }
 
-func (t *_Task) Size() int {
+func (t *_AsyncTask) Size() int {
 	return len(t.taskL)
 }
 
 // ATLen current active task size
-func (t *_Task) CurSize() int {
+func (t *_AsyncTask) CurSize() int {
 	t.mux.Lock()
 	defer t.mux.Unlock()
 
 	return len(t.taskL) - len(t.taskQ)
 }
 
-func (t *_Task) Wait() {
+func (t *_AsyncTask) Wait() {
 	for len(t.taskL) > 0 {
 		time.Sleep(time.Second)
 	}
 }
 
-func (t *_Task) Stat() Stat {
+func (t *_AsyncTask) Stat() Stat {
 	return Stat{
 		QL:     t.Size(),
 		CurDur: t.curDur.Seconds(),
@@ -65,7 +67,7 @@ func (t *_Task) Stat() Stat {
 	}
 }
 
-func (t *_Task) Do(name TaskFn, args ...interface{}) {
+func (t *_AsyncTask) Do(name TaskFn, args ...interface{}) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
 
@@ -92,7 +94,7 @@ func (t *_Task) Do(name TaskFn, args ...interface{}) {
 }
 
 // 此处不允许出错, 所有的错误必须在worker中自行处理
-func (t *_Task) _taskHandle(fn func(...interface{}) (err error)) {
+func (t *_AsyncTask) _taskHandle(fn func(...interface{}) (err error)) {
 	_t := time.Now()
 	errors.ErrHandle(fn(), func(err *errors.Err) {
 		if _l := logger.Warn(); _l.Enabled() {
@@ -111,7 +113,7 @@ func (t *_Task) _taskHandle(fn func(...interface{}) (err error)) {
 	t._curDur <- time.Now().Sub(_t)
 }
 
-func (t *_Task) Stop() {
+func (t *_AsyncTask) Stop() {
 	t._stop = true
 	t._stopS <- struct{}{}
 	t.Wait()
@@ -120,7 +122,7 @@ func (t *_Task) Stop() {
 	close(t.taskQ)
 }
 
-func (t *_Task) _loop() {
+func (t *_AsyncTask) _loop() {
 	for {
 		select {
 		case _fn := <-t.taskQ:

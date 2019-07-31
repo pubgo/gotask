@@ -27,7 +27,7 @@ func TestTasks(t *testing.T) {
 		errors.T(i == 29, "90999 error")
 	})
 
-	var task = gotask.NewTask(10, time.Second+time.Millisecond*10)
+	var task = gotask.NewAsyncTask(10, time.Second+time.Millisecond*10)
 	defer task.Stop()
 
 	for i := 0; i < 100; i++ {
@@ -49,7 +49,7 @@ func TestErrLog(t *testing.T) {
 		errors.T(i == 90999, "90999 error")
 	})
 
-	var task = gotask.NewTask(500, time.Second+time.Millisecond*10)
+	var task = gotask.NewAsyncTask(500, time.Second+time.Millisecond*10)
 	for i := 0; i < 100000; i++ {
 		go task.Do(fn, i)
 	}
@@ -87,7 +87,7 @@ func TestW(t *testing.T) {
 		})
 	})
 
-	var task = gotask.NewTask(10000, time.Second*2)
+	var task = gotask.NewAsyncTask(10000, time.Second*2)
 	for i := 0; i < 1000000; i++ {
 		task.Do(fn, i)
 	}
@@ -123,7 +123,7 @@ func TestUrl(t *testing.T) {
 		}))
 	})
 
-	var task = gotask.NewTask(200, time.Second*2)
+	var task = gotask.NewAsyncTask(200, time.Second*2)
 	for i := 0; i < 3000; i++ {
 		task.Do(fn, client, i)
 	}
